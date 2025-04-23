@@ -47,8 +47,6 @@ object MainForm: TMainForm
     TabOrder = 0
     Traces = <>
     OnMouseUp = DXDrawMouseUp
-    ExplicitTop = 72
-    ExplicitWidth = 776
   end
   object WebBrowser1: TWebBrowser
     Left = 272
@@ -327,6 +325,7 @@ object MainForm: TMainForm
     Top = 88
   end
   object DXTimer: TDXTimer
+    DefaultDone = False
     ActiveOnly = True
     Enabled = False
     Interval = 1

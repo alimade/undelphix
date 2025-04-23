@@ -85,7 +85,7 @@ type
   private
     pallo: Array[0..InitialNumBalls] of TDXBall; // Muutettava yleiskäyttöiseksi
     Shooted: Array[0..InitialNumBalls] of TShootBall; // Muutettava yleiskäyttöiseksi
-    Beep:TSound;              // Click soundi
+//    Beep:TSound;              // Click soundi
     procedure CollisionResponseBalls;
     procedure CollisionResponseSides(pm:integer);
     procedure FrictionalResistance(parameter:integer);
@@ -118,9 +118,9 @@ begin
 //  DXDraw.Options := DXDraw.Options - [doFlip];
 //  BorderStyle := bsNone;
 
-  Beep := TSound.Create(self);    // "Ääni" luokan muodostus
-  Beep.Parent := self;
-  Beep.LoadSound (ExtractFilePath(ParamStr(0))+'puck.wav');   // Click ääni
+//  Beep := TSound.Create(self);    // "Ääni" luokan muodostus
+//  Beep.Parent := self;
+//  Beep.LoadSound (ExtractFilePath(ParamStr(0))+'puck.wav`');   // Click ääni
   //imageList.Items.LoadFromFile('whiteball.dxg'); // lyöntipallo items[0]
 
   imageList.Items.MakeColorTable;
@@ -181,10 +181,10 @@ begin
          pallo[a].React(pallo[b]);
          if pallo[a].Tag = 1 then
          begin
-           Beep.PlayMode := True;    // Click Ääni;
-           Beep.PlaySound;
-           pallo[a].Tag := 0;
-           Beep.PlayMode := False;
+//           Beep.PlayMode := True;    // Click Ääni;
+//           Beep.PlaySound;
+//           pallo[a].Tag := 0;
+//           Beep.PlayMode := False;
          end;
     end;
   end;
@@ -489,7 +489,7 @@ end;
 
 procedure TMainForm.Sound1Change(Sender: TObject);
 begin
-  Beep.PlaySound;
+//  Beep.PlaySound;
 end;
 
 procedure TMainForm.Exit1Click(Sender: TObject);

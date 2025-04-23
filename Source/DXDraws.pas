@@ -131,8 +131,8 @@ const
   DXTextureImageGroupType_Normal = 0; // Normal group
   DXTextureImageGroupType_Mipmap = 1; // Mipmap group
 
-  Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ"at  0123456789<>=()-''!_+\/{}^&%.=$#ÅÖÄ?*';
-  PowerAlphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`1234567890-=~!@#$%^&*()_+[];'',./\{}:"<>?|©®™ ';
+  Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ"at  0123456789<>=()-''!_+\/{}^&%.=$#ÅÖ?*';
+  PowerAlphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`1234567890-=~!@#$%^&*()_+[];'',./\{}:"<>?|©®?';
   ccDefaultSpecular = $FFFFFFFF;
 
   ZeroRect: TRect = (Left: 0; Top: 0; Right: 0; Bottom: 0);
@@ -677,6 +677,7 @@ type
     function GetCanPaletteAnimation: Boolean;
     function GetSurfaceHeight: Integer;
     function GetSurfaceWidth: Integer;
+    function CheckMonitorChanged(): Boolean;
     procedure NotifyEventList(NotifyType: TDXDrawNotifyType);
     procedure SetColorTable(const ColorTable: TRGBQuads);
     procedure SetCooperativeLevel;
@@ -692,6 +693,9 @@ type
     procedure SetTraces(const Value: TTraces);
     function CheckD3: Boolean;
     function CheckD3D(Dest: TDirectDrawSurface): Boolean;
+  private
+    FMonitorGUID: PGUID;
+    function GetMonitorGUID(): PGUID;
   protected
     procedure DoFinalize; virtual;
     procedure DoFinalizeSurface; virtual;
@@ -1641,9 +1645,9 @@ type
     procedure UpdateTag;
     procedure Assign(Source: TPersistent); override;
     procedure Draw(Dest: TDirectDrawSurface; X, Y: Integer; PatternIndex: Integer);
-    //	Modifier par MKost d'Uk@Team tous droit réservé.
+    //	Modifier par MKost d'Uk@Team tous droit réserv?
     //	22:02 04/11/2005
-    //	Ajouté :
+    //	Ajout?:
     // Dans TPictureCollectionItem
     // procedure DrawFlipH(Dest: TDirectDrawSurface; X, Y: Integer; PatternIndex: Integer);
     //      -Effectue un flip Horizontale de l'image
@@ -2505,6 +2509,7 @@ type
 
   TDirectDrawCreateEx = function(lpGUID: PGUID; out lplpDD: IDirectDraw7; const iid: TGUID;
     pUnkOuter: IUnknown): HRESULT; stdcall;
+
 begin
   inherited Create;
   FClippers := TList.Create;
@@ -6479,6 +6484,31 @@ begin
   if CheckD3 then
     FD2D.SaveTextures(path)
 end;
+
+function TCustomDXDraw.GetMonitorGUID(): PGUID;
+type
+  TDirectDrawEnumerateExA = function (lpCallback: Pointer; lpContext: Pointer;
+    dwFlags: DWORD): HResult; stdcall;
+
+  function DDENUMCALLBACKEX(lpGUID: PGUID; lpDriverDescription: PAnsiChar; lpDriverName: PAnsiChar;
+    lpContext: Pointer; Monitor: HMonitor) : BOOL; stdcall;
+  begin
+    Result := True;
+    if TCustomDXDraw(lpContext).FForm.Monitor.Handle = Monitor then begin
+       TCustomDXDraw(lpContext).FMonitorGUID := lpGUID;
+    end;
+  end;
+
+begin
+  Result := nil;
+
+  if TDirectDrawEnumerateExA(DXLoadLibrary('DDraw.dll', 'DirectDrawEnumerateExA'))(
+    @DDENUMCALLBACKEX, Self, DDENUM_ATTACHEDSECONDARYDEVICES or DDENUM_DETACHEDSECONDARYDEVICES
+      or DDENUM_NONDISPLAYDEVICES) = DD_OK then begin
+    Result := Self.FMonitorGUID;
+  end;
+end;
+
 {  TDXDrawDriver  }
 
 constructor TDXDrawDriver.Create(ADXDraw: TCustomDXDraw);
@@ -6510,6 +6540,7 @@ begin
     FDXDraw.FDDraw := TDirectDraw.CreateEx(PGUID(FDXDraw.FDriver), {$IFDEF D3D_deprecated}doDirectX7Mode in FDXDraw.Options{$ELSE}True{$ENDIF})
   else
     FDXDraw.FDDraw := TDirectDraw.CreateEx(nil, {$IFDEF D3D_deprecated}doDirectX7Mode in FDXDraw.Options{$ELSE}True{$ENDIF});
+//    FDXDraw.FDDraw := TDirectDraw.CreateEx(FDXDraw.GetMonitorGUID, {$IFDEF D3D_deprecated}doDirectX7Mode in FDXDraw.Options{$ELSE}True{$ENDIF});
 end;
 
 procedure TDXDrawDriver.Initialize3D;
@@ -6984,8 +7015,26 @@ begin
     PDXDrawNotifyEvent(FNotifyEventList[i])^(Self, NotifyType);
 end;
 
-procedure TCustomDXDraw.FormWndProc(var Message: TMessage; DefWindowProc: TWndMethod);
+var
+  FLastMonitor: TMonitor;
 
+function TCustomDXDraw.CheckMonitorChanged(): Boolean;
+var
+  CurrentMonitor: TMonitor;
+begin
+  Result := False;
+  CurrentMonitor := Self.FForm.Monitor; // »ñÈ¡µ±Ç°ÏÔÊ¾Æ÷
+
+  if CurrentMonitor <> FLastMonitor then
+  begin
+    FLastMonitor := CurrentMonitor; // ¸üÐÂ¼ÇÂ¼
+    Result := True;
+  end;
+
+//  EnumDisplayDevices()
+end;
+
+procedure TCustomDXDraw.FormWndProc(var Message: TMessage; DefWindowProc: TWndMethod);
   procedure FlipToGDISurface;
   begin
     if Initialized and (FNowOptions * [doFullScreen, doFlip] = [doFullScreen, doFlip]) then
@@ -7041,16 +7090,28 @@ begin
       begin
         Finalize;
       end;
-    WM_ENTERSIZEMOVE:
-      begin
-        if not (csLoading in ComponentState) then
-          Finalize;
-      end;
-    WM_EXITSIZEMOVE:
-      begin
-        if not (csLoading in ComponentState) then
-          Initialize;
-      end;
+//    WM_MOVE, WM_DISPLAYCHANGE: begin
+//      if FInitialized and CheckMonitorChanged then begin
+//        Finalize;
+//        Initialize;
+//      end;
+//    end;
+//    WM_DISPLAYCHANGE: begin
+//      if FInitialized then begin
+//        Finalize;
+//        Initialize;
+//      end;
+//    end;
+//    WM_ENTERSIZEMOVE:
+//      begin
+//        if not (csLoading in ComponentState) then
+//          Finalize;
+//      end;
+//    WM_EXITSIZEMOVE:
+//      begin
+//        if not (csLoading in ComponentState) then
+//          Initialize;
+//      end;
 //    SW_RESTORE, SW_MAXIMIZE:
 //        begin
 //          {force finalize/initialize loop}
@@ -7689,6 +7750,18 @@ begin
     Flags := DDSCL_NORMAL{$IFDEF DXDOUBLEPRECISION} or DDSCL_FPUPRESERVE{$ENDIF};
 
   DDraw.DXResult := DDraw.{$IFDEF D3D_deprecated}IDraw{$ELSE}IDraw7{$ENDIF}.SetCooperativeLevel(Control.Handle, Flags);
+
+//  if doFullScreen in FNowOptions then
+//  begin
+//    Flags := DDSCL_FULLSCREEN or DDSCL_EXCLUSIVE or DDSCL_ALLOWMODEX;
+//    if doNoWindowChange in FNowOptions then
+//      Flags := Flags or DDSCL_NOWINDOWCHANGES;
+//    if doAllowReboot in FNowOptions then
+//      Flags := Flags or DDSCL_ALLOWREBOOT;
+//  end else
+//    Flags := DDSCL_NORMAL;
+//
+//  DDraw.DXResult := DDraw.IDraw.SetCooperativeLevel(Control.Handle, Flags);
 end;
 
 procedure TCustomDXDraw.SetDisplay(Value: TDXDrawDisplay);
@@ -7729,8 +7802,9 @@ begin
   begin
     FNowOptions := FOptions;
 
-    if not (doFullScreen in FNowOptions) then
+    if not (doFullScreen in FNowOptions) then begin
       FNowOptions := FNowOptions - [doNoWindowChange, doAllowReBoot, doAllowPalette256, doFlip];
+    end;
     {$IFDEF D3D_deprecated}
     if not (do3D in FNowOptions) then
       FNowOptions := FNowOptions - [doDirectX7Mode, {$IFDEF D3DRM}doRetainedMode,{$ENDIF} doHardware, doSelectDriver, doZBuffer];

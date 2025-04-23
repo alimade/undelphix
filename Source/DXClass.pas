@@ -132,6 +132,7 @@ type
     FOnActivate: TNotifyEvent;
     FOnDeactivate: TNotifyEvent;
     FOnTimer: TDXTimerEvent;
+    FDefaultDone: Boolean;
     procedure AppIdle(Sender: TObject; var Done: Boolean);
     function AppProc(var Message: TMessage): Boolean;
     procedure Finalize;
@@ -156,12 +157,14 @@ type
     property OnActivate: TNotifyEvent read FOnActivate write FOnActivate;
     property OnDeactivate: TNotifyEvent read FOnDeactivate write FOnDeactivate;
     property OnTimer: TDXTimerEvent read FOnTimer write FOnTimer;
+    property DefaultDone: Boolean read FDefaultDone write FDefaultDone;
   end;
 
   {  TDXTimer  }
 
   TDXTimer = class(TCustomDXTimer)
   published
+    property DefaultDone;
     property ActiveOnly;
     property Enabled;
     property Interval;
@@ -570,6 +573,7 @@ begin
   FActiveOnly := True;
   FEnabled := True;
   Interval := 1000;
+  FDefaultDone := False;
   Application.HookMainWindow(AppProc);
 end;
 
@@ -585,7 +589,7 @@ var
   t, t2: DWORD;
   LagCount, i: Integer;
 begin
-  Done := False;
+  Done := FDefaultDone;
 
   t := TimeGetTime;
   t2 := t-FOldTime;
